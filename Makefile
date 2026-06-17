@@ -1,4 +1,7 @@
-.PHONY: install lint test test-scenarios migrate dev-api dev-admin docker-up docker-down
+.PHONY: install lint format test test-scenarios migrate dev-api dev-admin docker-up docker-down pre-commit
+
+pre-commit:
+	pre-commit install
 
 install:
 	pip install -r requirements-dev.txt
