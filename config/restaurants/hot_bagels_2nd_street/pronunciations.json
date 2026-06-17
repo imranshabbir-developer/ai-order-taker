@@ -1,0 +1,36 @@
+{
+  "restaurant_id": "hot_bagels_2nd_street",
+  "_mock": true,
+  "lexicon_rules": [
+    {
+      "grapheme": "challah",
+      "phoneme_ipa": "ˈxɑːlə",
+      "asr_aliases": ["holla", "chala", "halla", "hollah"],
+      "context_notes": "Jewish braided ceremonial bread. Initial 'ch' is a voiceless velar fricative but commonly heard as an 'h' sound by ASR engines."
+    },
+    {
+      "grapheme": "bourekas",
+      "phoneme_ipa": "buːˈreɪkəs",
+      "asr_aliases": ["barakas", "borekas", "bouraka", "baraka"],
+      "context_notes": "Baked filled pastries of Sephardic Jewish origin. Must cleanly match user variants referring to barakas or bourekas."
+    },
+    {
+      "grapheme": "lox",
+      "phoneme_ipa": "lɒks",
+      "asr_aliases": ["locks", "lox", "salmon"],
+      "context_notes": "Brined salmon fillet. Frequently paired with cream cheese on an everything bagel."
+    },
+    {
+      "grapheme": "farina",
+      "phoneme_ipa": "fəˈriːnə",
+      "asr_aliases": ["farena", "furina", "porridge"],
+      "context_notes": "Cereal meal option often ordered for breakfast."
+    },
+    {
+      "grapheme": "schmear",
+      "phoneme_ipa": "ʃmɪər",
+      "asr_aliases": ["shmear", "smear", "cream cheese spread"],
+      "context_notes": "Traditional New York terminology for a generous spread of cream cheese."
+    }
+  ]
+}

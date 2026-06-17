@@ -1,0 +1,26 @@
+{
+  "restaurant_id": "hot_bagels_2nd_street",
+  "_mock": true,
+  "telephony": {
+    "provider": "twilio_mock",
+    "connection_status": "placeholder_active",
+    "sip_trunk_uri": "sip:hotbagels2nd@voice-mock.twilio.com",
+    "notes": "DEVELOPMENT PLACEHOLDER ONLY. Replace with production Twilio Account SID, Auth Token, and real registered webhook endpoints prior to deployment."
+  },
+  "sms_gateway": {
+    "provider": "twilio_sms_mock",
+    "enabled": true,
+    "fallback_delivery_tracking": true,
+    "notes": "DEVELOPMENT PLACEHOLDER ONLY. Real SMS sending keys and alphanumeric sender configuration should mask this object for live production use."
+  },
+  "payment_processing": {
+    "gateway": "stripe_voice_compliant_mock",
+    "tokenization_mode": "spoken_pci_dss_compliant_ivr",
+    "security_constraints": {
+      "never_repeat_full_card_number": true,
+      "mask_voice_logs": true,
+      "allowed_confirmation_digits": 4
+    },
+    "notes": "DEVELOPMENT PLACEHOLDER ONLY. Ensure PCI-compliant DTMF/Voice masking architecture maps directly to production Stripe elements tokens."
+  }
+}

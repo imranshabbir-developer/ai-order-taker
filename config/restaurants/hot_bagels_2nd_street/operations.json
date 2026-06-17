@@ -1,0 +1,30 @@
+{
+  "restaurant_id": "hot_bagels_2nd_street",
+  "_mock": true,
+  "timezone": "America/New_York",
+  "store_hours": {
+    "monday": { "open": "06:00", "close": "17:00" },
+    "tuesday": { "open": "06:00", "close": "17:00" },
+    "wednesday": { "open": "06:00", "close": "17:00" },
+    "thursday": { "open": "06:00", "close": "17:00" },
+    "friday": { "open": "06:00", "close": "15:00" },
+    "saturday": { "open": "closed", "close": "closed" },
+    "sunday": { "open": "closed", "close": "closed" }
+  },
+  "ordering_modes": {
+    "pickup": { "enabled": true, "minimum_order_cents": 0 },
+    "delivery": { "enabled": true, "minimum_order_cents": 1500 }
+  },
+  "delivery_zones": {
+    "supported_zip_codes": ["10003", "10009", "10012", "10014", "10002"]
+  },
+  "contact_channels": {
+    "escalation_staff_phone": "+1-555-010-0199",
+    "primary_store_phone": "+1-555-010-0100"
+  },
+  "agent_prompts_and_messages": {
+    "busy_signal_message": "We are currently experiencing a very high volume of phone orders. Please hold for the next available human associate or try your order again shortly.",
+    "closed_store_message": "Thank you for calling Hot Bagels 2nd Street. We are currently closed. Our standard operating hours are Monday through Thursday 6 AM to 5 PM, Friday 6 AM to 3 PM, and we are closed Saturdays and Sundays.",
+    "delivery_cutoff_message": "Delivery services stop 30 minutes prior to store closing time."
+  }
+}

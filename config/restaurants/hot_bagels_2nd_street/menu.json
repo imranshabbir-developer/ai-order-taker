@@ -1,0 +1,313 @@
+{
+  "restaurant_id": "hot_bagels_2nd_street",
+  "name": "Hot Bagels 2nd Street",
+  "_mock": true,
+  "modifiers": [
+    { "id": "schmear_cream_cheese", "name": "Cream Cheese", "aliases": ["cream cheese", "cc", "schmear"], "price_cents": 150 },
+    { "id": "smoked_lox", "name": "Smoked Lox", "aliases": ["lox", "salmon"], "price_cents": 500 },
+    { "id": "red_onions", "name": "Red Onions", "aliases": ["onions", "onion slices"], "price_cents": 0 },
+    { "id": "olives", "name": "Olives", "aliases": ["black olives", "sliced olives"], "price_cents": 50 },
+    { "id": "scoop_dough", "name": "Scoop out the dough", "aliases": ["scooped", "scoop the dough", "hollowed"], "price_cents": 0 },
+    { "id": "milk_red", "name": "Whole Milk (Red Cap)", "aliases": ["red milk", "whole milk", "regular milk", "milk"], "price_cents": 0 },
+    { "id": "milk_blue", "name": "Low Fat Milk (Blue Cap)", "aliases": ["blue milk", "skim milk", "low fat"], "price_cents": 0 },
+    { "id": "sugar_default", "name": "Regular Sugar", "aliases": ["sugar"], "price_cents": 0 },
+    { "id": "no_sugar", "name": "No Sugar", "aliases": ["unsweetened", "no sugar", "sugar free"], "price_cents": 0 },
+    { "id": "challah_braided", "name": "Braided Challah", "aliases": ["traditional braided", "braid", "braided"], "price_cents": 0 },
+    { "id": "challah_round", "name": "Round Challah", "aliases": ["round"], "price_cents": 0 },
+    { "id": "eggplant", "name": "Eggplant", "aliases": ["grilled eggplant", "aubergine"], "price_cents": 0 },
+    { "id": "feta_cheese", "name": "Feta Cheese", "aliases": ["feta"], "price_cents": 100 },
+    { "id": "extra_feta", "name": "Extra Feta Cheese", "aliases": ["more feta", "double feta"], "price_cents": 100 },
+    { "id": "tuna_salad", "name": "Tuna Salad", "aliases": ["tuna"], "price_cents": 0 },
+    { "id": "tuna_both_sides", "name": "Smear Tuna on Both Sides", "aliases": ["both sides", "heavy tuna"], "price_cents": 50 },
+    { "id": "side_coffee", "name": "Side Cup of Coffee", "aliases": ["coffee on the side", "side coffee"], "price_cents": 250 }
+  ],
+  "modifier_groups": [
+    {
+      "id": "bagel_toppings",
+      "name": "Bagel Toppings & Spreads",
+      "min_selections": 0,
+      "max_selections": 10,
+      "default_modifier_ids": [],
+      "modifier_ids": ["schmear_cream_cheese", "smoked_lox", "red_onions", "olives", "scoop_dough"]
+    },
+    {
+      "id": "sandwich_spreads_default",
+      "name": "Sandwich Default Cream Cheese",
+      "min_selections": 0,
+      "max_selections": 5,
+      "default_modifier_ids": ["schmear_cream_cheese"],
+      "modifier_ids": ["schmear_cream_cheese", "smoked_lox", "red_onions", "olives"]
+    },
+    {
+      "id": "coffee_milk",
+      "name": "Milk Options (Choose One)",
+      "min_selections": 0,
+      "max_selections": 1,
+      "default_modifier_ids": [],
+      "modifier_ids": ["milk_red", "milk_blue"]
+    },
+    {
+      "id": "coffee_sweetener",
+      "name": "Sweetener Options",
+      "min_selections": 0,
+      "max_selections": 1,
+      "default_modifier_ids": ["sugar_default"],
+      "modifier_ids": ["sugar_default", "no_sugar"]
+    },
+    {
+      "id": "challah_variations",
+      "name": "Challah Shape Variation",
+      "min_selections": 1,
+      "max_selections": 1,
+      "default_modifier_ids": [],
+      "modifier_ids": ["challah_braided", "challah_round"]
+    },
+    {
+      "id": "toast_modifiers",
+      "name": "Mediterranean Toast Modifiers",
+      "min_selections": 0,
+      "max_selections": 5,
+      "default_modifier_ids": ["eggplant", "feta_cheese"],
+      "modifier_ids": ["eggplant", "feta_cheese", "extra_feta"]
+    },
+    {
+      "id": "tuna_modifiers",
+      "name": "Tuna Customizations",
+      "min_selections": 0,
+      "max_selections": 2,
+      "default_modifier_ids": ["tuna_salad"],
+      "modifier_ids": ["tuna_salad", "tuna_both_sides"]
+    },
+    {
+      "id": "farina_modifiers",
+      "name": "Farina Sides",
+      "min_selections": 0,
+      "max_selections": 1,
+      "default_modifier_ids": [],
+      "modifier_ids": ["side_coffee"]
+    }
+  ],
+  "items": [
+    {
+      "id": "everything_bagel",
+      "name": "Everything Bagel",
+      "aliases": ["everything bagel", "everything"],
+      "category": "Bagels",
+      "base_price_cents": 150,
+      "modifier_group_ids": ["bagel_toppings"],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "cream_cheese_sandwich",
+      "name": "Cream Cheese Sandwich",
+      "aliases": ["cream cheese sandwich", "bagel with cream cheese schmear"],
+      "category": "Sandwiches",
+      "base_price_cents": 350,
+      "modifier_group_ids": ["sandwich_spreads_default"],
+      "default_modifier_ids": ["schmear_cream_cheese"],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "coffee",
+      "name": "Brewed Coffee",
+      "aliases": ["coffee", "hot coffee", "coffee milk"],
+      "category": "Beverages",
+      "base_price_cents": 250,
+      "modifier_group_ids": ["coffee_milk", "coffee_sweetener"],
+      "default_modifier_ids": ["sugar_default"],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "sourdough_challah",
+      "name": "Sourdough Challah",
+      "aliases": ["sourdough challah", "sourdough challahs", "challahs"],
+      "category": "Bakery",
+      "base_price_cents": 850,
+      "modifier_group_ids": ["challah_variations"],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "sliced_egg_sandwich",
+      "name": "Sliced Egg Sandwich",
+      "aliases": ["sliced egg sandwich", "sandwich with sliced eggs"],
+      "category": "Egg Sandwiches",
+      "base_price_cents": 650,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "scrambled_egg_sandwich",
+      "name": "Scrambled Egg Sandwich",
+      "aliases": ["scrambled egg sandwich", "sandwich with scrambled eggs"],
+      "category": "Egg Sandwiches",
+      "base_price_cents": 650,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "egg_salad_sandwich",
+      "name": "Egg Salad Sandwich",
+      "aliases": ["egg salad sandwich", "sandwich with egg salad"],
+      "category": "Egg Sandwiches",
+      "base_price_cents": 595,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "sunny_side_up_egg_sandwich",
+      "name": "Sunny Side Up Egg Sandwich",
+      "aliases": ["sunny side up egg sandwich", "sandwich with sunny side up eggs"],
+      "category": "Egg Sandwiches",
+      "base_price_cents": 650,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "mediterranean_toast",
+      "name": "Mediterranean Toast",
+      "aliases": ["mediterranean toast", "mediterranean toasts"],
+      "category": "Toast",
+      "base_price_cents": 950,
+      "modifier_group_ids": ["toast_modifiers"],
+      "default_modifier_ids": ["eggplant", "feta_cheese"],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "farina",
+      "name": "Hot Farina Porridge",
+      "aliases": ["farina", "hot farina", "porridge"],
+      "category": "Breakfast",
+      "base_price_cents": 550,
+      "modifier_group_ids": ["farina_modifiers"],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": ["side_coffee"],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "tuna_sandwich",
+      "name": "Tuna Sandwich",
+      "aliases": ["tuna sandwich", "tuna fish sandwich"],
+      "category": "Sandwiches",
+      "base_price_cents": 795,
+      "modifier_group_ids": ["tuna_modifiers"],
+      "default_modifier_ids": ["tuna_salad"],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "giant_pizza_bagel",
+      "name": "Giant Pizza Bagel Party Size",
+      "aliases": ["giant pizza bagel", "giant pizza"],
+      "category": "Specialty",
+      "base_price_cents": 3500,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": {
+        "min_notice_hours": 24,
+        "action": "refuse_and_escalate",
+        "message": "The Giant Pizza Bagel requires a 24-hour advance notice. I cannot add this to an immediate order. Please call the store directly or let me transfer you to handle a custom reservation."
+      },
+      "is_bundle": false
+    },
+    {
+      "id": "hash_browns_half_lb",
+      "name": "Hash Browns 1/2 lb",
+      "aliases": ["hash browns half lb", "half pound of hash browns", "hash browns half pound"],
+      "category": "Sides",
+      "base_price_cents": 450,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "bourekas_tray",
+      "name": "Whole Tray of Bourekas",
+      "aliases": ["whole tray of barakas", "whole tray of bourekas", "barakas tray", "bourekas tray"],
+      "category": "Bakery",
+      "base_price_cents": 2800,
+      "modifier_group_ids": [],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "plain_bagel",
+      "name": "Plain Bagel",
+      "aliases": ["plain"],
+      "category": "Bagels",
+      "base_price_cents": 150,
+      "modifier_group_ids": ["bagel_toppings"],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    },
+    {
+      "id": "sesame_bagel",
+      "name": "Sesame Bagel",
+      "aliases": ["sesame"],
+      "category": "Bagels",
+      "base_price_cents": 150,
+      "modifier_group_ids": ["bagel_toppings"],
+      "default_modifier_ids": [],
+      "disallowed_modifier_ids": [],
+      "restriction": null,
+      "is_bundle": false
+    }
+  ],
+  "bundles": [
+    {
+      "id": "breakfast_for_two",
+      "name": "Breakfast For Two Bundle",
+      "aliases": ["breakfast for two", "couple breakfast"],
+      "base_price_cents": 1999,
+      "supports_gift_note": false
+    },
+    {
+      "id": "gift_box_1_2",
+      "name": "Gift Box For 1-2 People",
+      "aliases": ["gift box for 1-2 people", "gift box", "gift box for one or two people"],
+      "base_price_cents": 2500,
+      "supports_gift_note": true
+    }
+  ],
+  "cross_item_rules": [
+    {
+      "item_id": "farina",
+      "disallowed_modifier_ids": ["side_coffee"],
+      "message": "Cross-item constraint: Coffee cannot be ordered on the side with Hot Farina Porridge."
+    }
+  ],
+  "pronunciations": {},
+  "hours": {}
+}
