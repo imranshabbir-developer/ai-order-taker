@@ -1,0 +1,194 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h1 { font-size: 1rem; margin: 0 0 0.25rem; }
+.subtitle { font-size: 0.75rem; color: #94a3b8; margin: 0 0 1.25rem; }
+
+.mock-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  background: #f59e0b;
+  color: #0f172a;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.nav button.active,
+.nav button:hover { background: #334155; color: #fff; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.sidebar-footer code {
+  display: block;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+}
+
+.main { padding: 1.25rem 1.75rem; max-width: 1200px; }
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+  margin-bottom: 1rem;
+}
+
+.card h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.stat-label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem; }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+
+.status-ok { color: #15803d; font-weight: 600; }
+.status-fail { color: #b91c1c; font-weight: 600; }
+
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+button.primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button.secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button.small { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.scenario-list { list-style: none; padding: 0; margin: 0; }
+
+.scenario-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.scenario-info { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
+.scenario-info strong { font-size: 0.85rem; color: #2563eb; }
+.scenario-info small { color: #64748b; font-size: 0.75rem; }
+.scenario-result { font-size: 0.8rem; color: #15803d; font-weight: 600; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.data-table th { text-align: left; color: #64748b; font-weight: 600; padding: 0.5rem 0; border-bottom: 2px solid #e2e8f0; }
+.data-table td { padding: 0.45rem 0; border-bottom: 1px solid #f1f5f9; }
+
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.parity-match {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  padding: 0.75rem;
+  border-radius: 8px;
+  color: #166534;
+  margin-top: 0.75rem;
+}
+
+.parity-mismatch {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  padding: 0.75rem;
+  border-radius: 8px;
+  color: #991b1b;
+  margin-top: 0.75rem;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+}
