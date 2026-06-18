@@ -1,6 +1,6 @@
 {
   "restaurant_id": "hot_bagels_2nd_street",
-  "_mock": true,
+  "_mock": false,
   "timezone": "America/New_York",
   "store_hours": {
     "monday": { "open": "06:00", "close": "17:00" },

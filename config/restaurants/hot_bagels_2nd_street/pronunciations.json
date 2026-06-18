@@ -1,6 +1,6 @@
 {
   "restaurant_id": "hot_bagels_2nd_street",
-  "_mock": true,
+  "_mock": false,
   "lexicon_rules": [
     {
       "grapheme": "challah",

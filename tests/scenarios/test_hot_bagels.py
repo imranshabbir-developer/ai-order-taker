@@ -3,13 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from order_engine.catalog import MenuCatalog
 from order_engine.models import OrderResultStatus
 from order_engine.order_service import OrderService
 from order_engine.renderers import SummaryRenderer
 
-CONFIG_DIR = Path(__file__).resolve().parents[2] / "config" / "restaurants" / "hot_bagels_2nd_street"
+CONFIG_DIR = (
+    Path(__file__).resolve().parents[2] / "config" / "restaurants" / "hot_bagels_2nd_street"
+)
 
 
 @pytest.fixture
