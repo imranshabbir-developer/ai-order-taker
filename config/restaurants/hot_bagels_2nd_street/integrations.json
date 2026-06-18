@@ -1,6 +1,6 @@
 {
   "restaurant_id": "hot_bagels_2nd_street",
-  "_mock": true,
+  "_mock": false,
   "telephony": {
     "provider": "twilio_mock",
     "connection_status": "placeholder_active",

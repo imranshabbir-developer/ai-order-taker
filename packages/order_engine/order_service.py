@@ -3,7 +3,13 @@ from __future__ import annotations
 import uuid
 from copy import deepcopy
 
-from order_engine.cart_ops import add_line, compute_line_pricing, find_line, remove_line
+from order_engine.cart_ops import (
+    add_line,
+    compute_line_pricing,
+    find_line,
+    remove_line,
+    replace_line,
+)
 from order_engine.catalog import MenuCatalog
 from order_engine.models import Cart, LineItem, MenuItemDef, OrderResultStatus
 from order_engine.renderers import SummaryRenderer
@@ -22,7 +28,10 @@ class OrderService:
         if not matches:
             return OperationResult(
                 status=OrderResultStatus.NOT_FOUND,
-                message=f"I couldn't find anything matching '{query}'. Could you describe it differently?",
+                message=(
+                    f"I couldn't find anything matching '{query}'. "
+                    "Could you describe it differently?"
+                ),
                 cart=self.cart,
             )
         if len(matches) == 1:
@@ -227,13 +236,14 @@ class OrderService:
             selected = [m for m in clean_ids if m in group.modifier_ids]
             if group.max_selections == 1 and len(selected) > 1:
                 names = [
-                    self.catalog.get_modifier(m).name
-                    for m in selected
-                    if self.catalog.get_modifier(m)
+                    mod.name for m in selected if (mod := self.catalog.get_modifier(m)) is not None
                 ]
                 return AddItemResult(
                     status=OrderResultStatus.VIOLATION,
-                    message=f"You can only choose one option from {group.name}. You asked for: {', '.join(names)}.",
+                    message=(
+                        f"You can only choose one option from {group.name}. "
+                        f"You asked for: {', '.join(names)}."
+                    ),
                     cart=self.cart,
                 )
 
@@ -241,9 +251,9 @@ class OrderService:
             has_default = bool(group.default_modifier_ids or item.default_modifier_ids)
             if group.min_selections > 0 and len(effective) == 0 and not has_default:
                 options = [
-                    self.catalog.get_modifier(m).name
+                    mod.name
                     for m in group.modifier_ids
-                    if self.catalog.get_modifier(m)
+                    if (mod := self.catalog.get_modifier(m)) is not None
                 ]
                 return AddItemResult(
                     status=OrderResultStatus.CLARIFICATION,
@@ -353,6 +363,70 @@ class OrderService:
         return OperationResult(
             status=OrderResultStatus.SUCCESS,
             message="Removed that item from your order.",
+            cart=self.cart,
+        )
+
+    def set_modifiers(self, line_id: str, requested_modifiers: list[str]) -> OperationResult:
+        line = find_line(self.cart, line_id)
+        if line is None:
+            return OperationResult(
+                status=OrderResultStatus.NOT_FOUND,
+                message="I couldn't find that item in your order.",
+                cart=self.cart,
+            )
+
+        item = self.catalog.get_item(line.item_id)
+        if item is None:
+            bundle = self.catalog.get_bundle(line.item_id)
+            if bundle is None:
+                return OperationResult(
+                    status=OrderResultStatus.NOT_FOUND,
+                    message="That menu item is no longer available.",
+                    cart=self.cart,
+                )
+            return OperationResult(
+                status=OrderResultStatus.VIOLATION,
+                message="Modifiers cannot be changed on bundle items.",
+                cart=self.cart,
+            )
+
+        resolved_mod_ids, mod_error = self._resolve_modifiers(item, requested_modifiers)
+        if mod_error:
+            return OperationResult(
+                status=mod_error.status,
+                message=mod_error.message,
+                options=mod_error.options,
+                cart=self.cart,
+            )
+
+        validation_error = self._validate_modifier_rules(item, resolved_mod_ids)
+        if validation_error:
+            return OperationResult(
+                status=validation_error.status,
+                message=validation_error.message,
+                options=validation_error.options,
+                cart=self.cart,
+            )
+
+        final_mod_ids = self._apply_defaults(item, resolved_mod_ids)
+        new_line = self._build_line(
+            item,
+            final_mod_ids,
+            line.quantity,
+            line.special_instructions,
+        )
+        new_line.line_id = line.line_id
+        replace_line(self.cart, line_id, new_line)
+        return OperationResult(
+            status=OrderResultStatus.SUCCESS,
+            message=f"Updated modifiers for {line.item_name}.",
+            cart=self.cart,
+        )
+
+    def get_cart(self) -> OperationResult:
+        return OperationResult(
+            status=OrderResultStatus.SUCCESS,
+            message="Current cart",
             cart=self.cart,
         )
 

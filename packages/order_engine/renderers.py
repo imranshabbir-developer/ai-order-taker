@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from order_engine.models import Cart, LineItem
+from order_engine.models import Cart
 
 
 class SummaryRenderer:

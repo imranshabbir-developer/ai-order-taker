@@ -27,3 +27,8 @@ def find_line(cart: Cart, line_id: str) -> LineItem | None:
         if line.line_id == line_id:
             return line
     return None
+
+
+def replace_line(cart: Cart, line_id: str, new_line: LineItem) -> Cart:
+    cart.lines = [new_line if ln.line_id == line_id else ln for ln in cart.lines]
+    return cart

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +24,7 @@ class RestaurantConfigBundle(BaseModel):
             path = config_dir / name
             if not path.exists():
                 return {}
-            return json.loads(path.read_text(encoding="utf-8"))
+            return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
 
         menu = _read("menu.json")
         if menu:
@@ -41,7 +41,5 @@ class RestaurantConfigBundle(BaseModel):
     @property
     def is_mock(self) -> bool:
         return bool(
-            self.menu.get("_mock")
-            or self.operations.get("_mock")
-            or self.integrations.get("_mock")
+            self.menu.get("_mock") or self.operations.get("_mock") or self.integrations.get("_mock")
         )

@@ -6,6 +6,7 @@ from pathlib import Path
 from rapidfuzz import fuzz, process
 
 from order_engine.models import (
+    BundleDef,
     MenuItemDef,
     ModifierDef,
     ModifierGroupDef,
@@ -140,19 +141,23 @@ class MenuCatalog:
                 matched.append(item)
         return matched
 
-    def get_bundle(self, bundle_id: str):
+    def get_bundle(self, bundle_id: str) -> BundleDef | None:
         for b in self.config.bundles:
             if b.id == bundle_id:
                 return b
         return None
 
-    def search_bundles(self, query: str) -> list:
+    def search_bundles(self, query: str) -> list[BundleDef]:
         query_lower = query.strip().lower()
         results = []
         for b in self.config.bundles:
             labels = [b.name.lower(), *[a.lower() for a in b.aliases]]
             best = max(fuzz.WRatio(query_lower, label) for label in labels)
-            if best >= 70 or query_lower in b.name.lower() or any(query_lower in a.lower() for a in b.aliases):
+            if (
+                best >= 70
+                or query_lower in b.name.lower()
+                or any(query_lower in a.lower() for a in b.aliases)
+            ):
                 results.append((b, best))
         results.sort(key=lambda x: -x[1])
         return [b for b, _ in results]
