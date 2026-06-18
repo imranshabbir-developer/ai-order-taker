@@ -85,5 +85,8 @@ Desktop.ini
 docker-compose.override.yml
 docker-compose.override.yaml
 
+# --- Downloaded ML models (Sprint 3+) ---
+models/
+
 # --- Cursor / local tooling ---
 .cursor/
