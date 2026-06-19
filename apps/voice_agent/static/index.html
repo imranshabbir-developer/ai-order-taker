@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hot Bagels — Voice Order Test</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #1a1a1a; background: #f6f3ee; }
+    body { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .sub { color: #666; margin-bottom: 1.5rem; }
+    #log { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; min-height: 240px; white-space: pre-wrap; }
+    .row { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
+    button { padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    button.primary { background: #c45a11; color: #fff; border-color: #a3470d; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input { flex: 1; min-width: 200px; padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; }
+    .latency { color: #888; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Hot Bagels Voice Test</h1>
+  <p class="sub">Sprint 4.7 — browser client (Web Speech + server TTS). Requires Order API + Voice server running.</p>
+
+  <div class="row">
+    <button id="connectBtn" class="primary">Connect</button>
+    <button id="listenBtn" disabled>🎤 Speak</button>
+    <button id="sendBtn" disabled>Send Text</button>
+  </div>
+  <div class="row">
+    <input id="textInput" placeholder="Or type your order here..." />
+  </div>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const connectBtn = document.getElementById('connectBtn');
+    const listenBtn = document.getElementById('listenBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const textInput = document.getElementById('textInput');
+
+    const callId = 'web-' + Math.random().toString(36).slice(2, 10);
+    const wsUrl = `ws://${location.host}/ws/voice/${callId}?restaurant_id=hot_bagels_2nd_street`;
+    let ws = null;
+    let recognition = null;
+
+    function append(text, cls = '') {
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = text;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function playBase64Audio(b64) {
+      if (!b64) return;
+      const audio = new Audio('data:audio/mpeg;base64,' + b64);
+      audio.play().catch(() => append('(Could not autoplay audio — click page first)'));
+    }
+
+    connectBtn.onclick = () => {
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        append('Connected. Call ID: ' + callId);
+        listenBtn.disabled = false;
+        sendBtn.disabled = false;
+        connectBtn.disabled = true;
+      };
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'greeting' || msg.type === 'reply') {
+          if (msg.transcript) append('You: ' + msg.transcript);
+          append('Agent: ' + msg.assistant_message);
+          if (msg.engine_status) append('  engine: ' + msg.engine_status + ' — ' + msg.engine_message, 'latency');
+          if (msg.latency_ms) append('  latency: ' + JSON.stringify(msg.latency_ms), 'latency');
+          playBase64Audio(msg.audio_base64);
+        }
+      };
+      ws.onclose = () => append('Disconnected.');
+      ws.onerror = () => append('WebSocket error.');
+    };
+
+    sendBtn.onclick = () => {
+      const text = textInput.value.trim();
+      if (!text || !ws) return;
+      ws.send(JSON.stringify({ type: 'text', text }));
+      textInput.value = '';
+    };
+
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SR();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.onresult = (ev) => {
+        const text = ev.results[0][0].transcript;
+        append('Heard: ' + text);
+        if (ws) ws.send(JSON.stringify({ type: 'text', text }));
+      };
+      recognition.onerror = (ev) => append('Mic error: ' + ev.error);
+      listenBtn.onclick = () => recognition.start();
+    } else {
+      listenBtn.disabled = true;
+      append('Web Speech API not supported — use text input.');
+    }
+  </script>
+</body>
+</html>

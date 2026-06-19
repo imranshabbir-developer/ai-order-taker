@@ -23,6 +23,15 @@ test-scenarios:
 test-dialogue:
 	set PYTHONPATH=packages;. && python scripts/run_scenario_tests.py --mode direct
 
+dev-voice:
+	set PYTHONPATH=packages;. && python run_voice.py --interactive --no-speak
+
+dev-voice-server:
+	set PYTHONPATH=packages;. && python run_voice_server.py
+
+test-voice:
+	set PYTHONPATH=packages;. && python -m pytest tests/voice/ -v
+
 docker-up:
 	docker compose -f infra/docker-compose.yml up -d
 
