@@ -1,0 +1,37 @@
+{
+  "restaurant_id": "demo_cafe",
+  "name": "Demo Cafe",
+  "_mock": true,
+  "modifiers": [
+    {"id": "milk", "name": "Milk", "aliases": ["milk"], "price_cents": 0},
+    {"id": "no_sugar", "name": "No Sugar", "aliases": ["no sugar"], "price_cents": 0}
+  ],
+  "modifier_groups": [],
+  "items": [
+    {
+      "id": "latte",
+      "name": "Latte",
+      "aliases": ["latte", "cafe latte"],
+      "category": "Beverages",
+      "base_price_cents": 450,
+      "modifier_group_ids": []
+    },
+    {
+      "id": "croissant",
+      "name": "Croissant",
+      "aliases": ["croissant"],
+      "category": "Bakery",
+      "base_price_cents": 350,
+      "modifier_group_ids": []
+    },
+    {
+      "id": "avocado_toast",
+      "name": "Avocado Toast",
+      "aliases": ["avocado toast"],
+      "category": "Toast",
+      "base_price_cents": 899,
+      "modifier_group_ids": []
+    }
+  ],
+  "bundles": []
+}

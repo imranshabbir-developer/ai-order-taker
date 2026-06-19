@@ -31,7 +31,7 @@ class GraphState(TypedDict, total=False):
 def advance_phase(phase: DialoguePhase, tool_name: str, status: str) -> DialoguePhase:
     normalized = status.lower()
     if tool_name == "checkout" and normalized == "success":
-        return DialoguePhase.COMPLETE
+        return DialoguePhase.PAYMENT
     if normalized == "clarification":
         return DialoguePhase.CLARIFYING
     if tool_name == "get_cart" and normalized == "success":

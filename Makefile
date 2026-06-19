@@ -23,6 +23,12 @@ test-scenarios:
 test-dialogue:
 	set PYTHONPATH=packages;. && python scripts/run_scenario_tests.py --mode direct
 
+test-dialogue-repeat:
+	set PYTHONPATH=packages;. && python scripts/run_scenario_tests.py --mode direct --repeat 3
+
+load-test:
+	set PYTHONPATH=packages;. && python scripts/load_test_concurrent_calls.py --concurrency 5
+
 dev-voice:
 	set PYTHONPATH=packages;. && python run_voice.py --interactive --no-speak
 
@@ -31,6 +37,12 @@ dev-voice-server:
 
 test-voice:
 	set PYTHONPATH=packages;. && python -m pytest tests/voice/ -v
+
+dev-payment:
+	set PYTHONPATH=packages;. && python run_payment.py
+
+dev-sms:
+	set PYTHONPATH=packages;. && python run_sms.py
 
 docker-up:
 	docker compose -f infra/docker-compose.yml up -d

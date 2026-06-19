@@ -338,6 +338,56 @@ def _scripted_llm_for_scenario(scenario: dict) -> MockLLM:
                 ),
             ]
         )
+    elif sid == "12":
+        steps.extend(
+            [
+                LLMCompletion(
+                    message=LLMMessage(
+                        role="assistant",
+                        tool_calls=[
+                            {
+                                "id": "c1",
+                                "type": "function",
+                                "function": {
+                                    "name": "add_item",
+                                    "arguments": json.dumps({"item_term": "cream cheese sandwich"}),
+                                },
+                            }
+                        ],
+                    )
+                ),
+                LLMCompletion(
+                    message=LLMMessage(
+                        role="assistant",
+                        tool_calls=[
+                            {
+                                "id": "c2",
+                                "type": "function",
+                                "function": {
+                                    "name": "get_cart",
+                                    "arguments": json.dumps({}),
+                                },
+                            }
+                        ],
+                    )
+                ),
+                LLMCompletion(
+                    message=LLMMessage(
+                        role="assistant",
+                        tool_calls=[
+                            {
+                                "id": "c3",
+                                "type": "function",
+                                "function": {
+                                    "name": "checkout",
+                                    "arguments": json.dumps({"customer_phone": "+15551234012"}),
+                                },
+                            }
+                        ],
+                    )
+                ),
+            ]
+        )
     elif sid == "13":
         steps.extend(
             [
@@ -453,6 +503,7 @@ async def run_scenario(
     expected = str(scenario.get("expected_status", "success"))
     utterances = _utterances(scenario)
     last_status = ""
+    order_id: str | None = None
 
     if use_graph:
         await agent.reset()
@@ -473,6 +524,35 @@ async def run_scenario(
             turn = await agent.handle_user_message(text)
             if turn.tool_results:
                 last_status = turn.tool_results[-1].status
+                for tr in turn.tool_results:
+                    if tr.order_id:
+                        order_id = tr.order_id
+
+    if scenario.get("requires_payment"):
+        if not order_id:
+            checkout = await agent._order.invoke_tool(
+                agent.restaurant_id,
+                agent.call_id,
+                "checkout",
+                {"customer_phone": "+15551234012"},
+            )
+            last_status = checkout.status
+            order_id = checkout.order_id
+        if order_id:
+            pay = await agent._order.capture_payment(
+                agent.restaurant_id,
+                order_id,
+                card_number="4111111111111111",
+                exp_month=12,
+                exp_year=2030,
+                cvv="123",
+                call_id=agent.call_id,
+            )
+            pay_status = str(pay.get("status", ""))
+            ok = last_status == expected and pay_status == "succeeded"
+            detail = f"checkout={last_status} payment={pay_status}"
+            return ok, detail
+        return False, "checkout missing order_id for payment"
 
     ok = last_status == expected
     detail = f"expected={expected} got={last_status or 'none'}"
@@ -489,6 +569,12 @@ async def main() -> int:
     )
     parser.add_argument("--graph", action="store_true", help="Route turns through LangGraph")
     parser.add_argument("--id", dest="scenario_id", help="Run a single scenario id")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Run the full suite N times (Sprint 7.1 stability check)",
+    )
     args = parser.parse_args()
 
     get_dialogue_settings.cache_clear()
@@ -511,38 +597,42 @@ async def main() -> int:
             return 1
 
     passed = 0
-    for scenario in scenarios:
-        try:
-            call_id = f"scenario-{scenario['id']}-{uuid.uuid4().hex[:6]}"
-            if args.mode == "llm":
-                llm = OpenAICompatibleLLM(
-                    settings.llm_base_url,
-                    settings.llm_model,
-                    settings.llm_api_key,
-                    settings.llm_timeout_seconds,
+    total_runs = args.repeat * len(scenarios)
+    for run_idx in range(args.repeat):
+        if args.repeat > 1:
+            print(f"\n=== Run {run_idx + 1}/{args.repeat} ===")
+        for scenario in scenarios:
+            try:
+                call_id = f"scenario-{scenario['id']}-{uuid.uuid4().hex[:6]}"
+                if args.mode == "llm":
+                    llm = OpenAICompatibleLLM(
+                        settings.llm_base_url,
+                        settings.llm_model,
+                        settings.llm_api_key,
+                        settings.llm_timeout_seconds,
+                    )
+                else:
+                    llm = _scripted_llm_for_scenario(scenario)
+
+                agent = DialogueAgent(
+                    llm,
+                    order_client,
+                    prompts,
+                    restaurant_id,
+                    call_id,
+                    max_tool_rounds=settings.llm_max_tool_rounds,
                 )
-            else:
-                llm = _scripted_llm_for_scenario(scenario)
+                ok, detail = await run_scenario(agent, scenario, use_graph=args.graph)
+                mark = "PASS" if ok else "FAIL"
+                print(f"[{mark}] {scenario['id']} {scenario['name']} — {detail}")
+                if ok:
+                    passed += 1
+            except Exception as exc:
+                detail = str(exc) or repr(exc)
+                print(f"[ERROR] {scenario['id']} {scenario['name']} — {detail}")
 
-            agent = DialogueAgent(
-                llm,
-                order_client,
-                prompts,
-                restaurant_id,
-                call_id,
-                max_tool_rounds=settings.llm_max_tool_rounds,
-            )
-            ok, detail = await run_scenario(agent, scenario, use_graph=args.graph)
-            mark = "PASS" if ok else "FAIL"
-            print(f"[{mark}] {scenario['id']} {scenario['name']} — {detail}")
-            if ok:
-                passed += 1
-        except Exception as exc:
-            print(f"[ERROR] {scenario['id']} {scenario['name']} — {exc}")
-
-    total = len(scenarios)
-    print(f"\n{passed}/{total} scenarios passed ({args.mode} mode)")
-    return 0 if passed == total else 1
+    print(f"\n{passed}/{total_runs} scenarios passed ({args.mode} mode, repeat={args.repeat})")
+    return 0 if passed == total_runs else 1
 
 
 if __name__ == "__main__":

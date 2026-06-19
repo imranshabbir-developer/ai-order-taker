@@ -1,0 +1,7 @@
+{
+  "restaurant_id": "demo_cafe",
+  "_mock": true,
+  "telephony": {"provider": "mock"},
+  "sms_gateway": {"provider": "mock", "enabled": true},
+  "payment_processing": {"gateway": "mock_vault", "tokenization_mode": "mock"}
+}

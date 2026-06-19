@@ -8,11 +8,19 @@ from order_engine.catalog import MenuCatalog
 from order_engine.config_loader import RestaurantConfigBundle
 from order_engine.models import OrderResultStatus
 from order_engine.order_service import OrderService
+from order_engine.parity import check_order_parity
 from order_engine.results import AddItemResult, OperationResult
 
-from apps.order_api.db.order_store import OrderStore, normalize_phone
+from apps.order_api.db.order_store import OrderRecord, OrderStore, normalize_phone
+from apps.order_api.db.payment_store import PaymentStore
 from apps.order_api.db.session_store import SessionStore
-from apps.order_api.schemas import ToolResponse
+from apps.order_api.db.sms_store import SmsStore
+from apps.order_api.integrations import charge_payment, send_order_sms
+from apps.order_api.schemas import PaymentCaptureResponse, ToolResponse
+from apps.order_api.settings import get_settings
+from apps.order_api.store_hours import delivery_available, is_store_open
+from apps.payment_service.schemas import ChargeRequest
+from apps.sms_gateway.schemas import SendSmsRequest
 
 
 class CallOrderUseCases:
@@ -23,7 +31,70 @@ class CallOrderUseCases:
         self._config_cache: dict[str, RestaurantConfigBundle] = {}
         self._session_store = SessionStore()
         self._order_store = OrderStore()
+        self._payment_store = PaymentStore()
+        self._sms_store = SmsStore()
         self._active_order_ids: dict[str, uuid.UUID] = {}
+        self._memory_orders: dict[uuid.UUID, OrderRecord] = {}
+        self._memory_caller_phones: dict[str, str] = {}
+
+    def store_status(self, restaurant_id: str) -> dict:
+        bundle = self.get_bundle(restaurant_id)
+        open_now, open_msg = is_store_open(bundle.operations)
+        delivery_ok, delivery_msg = delivery_available(bundle.operations)
+        escalation = bundle.operations.get("contact_channels", {}).get("escalation_staff_phone")
+        return {
+            "is_open": open_now,
+            "message": open_msg,
+            "delivery_available": delivery_ok,
+            "delivery_message": delivery_msg,
+            "escalation_phone": escalation,
+        }
+
+    async def _get_order_record(self, order_id: uuid.UUID) -> OrderRecord | None:
+        record = await self._order_store.get_order(order_id)
+        if record is not None:
+            return record
+        return self._memory_orders.get(order_id)
+
+    def _closed_result(self, service: OrderService, message: str) -> ToolResponse:
+        result = OperationResult(
+            status=OrderResultStatus.STORE_CLOSED,
+            message=message,
+            cart=service.cart,
+        )
+        return self.build_response(service, result)
+
+    def _ensure_store_open(self, restaurant_id: str, service: OrderService) -> ToolResponse | None:
+        if not get_settings().enforce_store_hours:
+            return None
+        open_now, msg = is_store_open(self.get_bundle(restaurant_id).operations)
+        if not open_now:
+            return self._closed_result(service, msg)
+        return None
+
+    async def _resolve_customer_phone(
+        self, restaurant_id: str, call_id: str, explicit: str = ""
+    ) -> str | None:
+        if explicit:
+            return normalize_phone(explicit)
+        key = self._session_key(restaurant_id, call_id)
+        if key in self._memory_caller_phones:
+            return self._memory_caller_phones[key]
+        db_phone = await self._session_store.get_caller_phone(restaurant_id, call_id)
+        return db_phone
+
+    async def start_call(self, restaurant_id: str, call_id: str, caller_phone: str = "") -> dict:
+        bundle = self.get_bundle(restaurant_id)
+        await self._session_store.ensure_restaurant(
+            restaurant_id, str(bundle.menu.get("name", restaurant_id))
+        )
+        if caller_phone:
+            phone = normalize_phone(caller_phone)
+            key = self._session_key(restaurant_id, call_id)
+            self._memory_caller_phones[key] = phone
+            await self._session_store.set_caller_phone(restaurant_id, call_id, phone)
+        status = self.store_status(restaurant_id)
+        return {"call_id": call_id, "restaurant_id": restaurant_id, **status}
 
     def config_root(self) -> Path:
         return Path(__file__).resolve().parents[2] / "config" / "restaurants"
@@ -64,6 +135,7 @@ class CallOrderUseCases:
         key = self._session_key(restaurant_id, call_id)
         self._sessions.pop(key, None)
         self._active_order_ids.pop(key, None)
+        self._memory_caller_phones.pop(key, None)
         await self._session_store.delete_session(restaurant_id, call_id)
 
     async def persist_session(
@@ -82,6 +154,8 @@ class CallOrderUseCases:
         result: AddItemResult | OperationResult,
         *,
         order_id: uuid.UUID | None = None,
+        sms_sent: bool | None = None,
+        payment_required: bool | None = None,
     ) -> ToolResponse:
         spoken, sms = service.get_summary()
         return ToolResponse(
@@ -93,6 +167,8 @@ class CallOrderUseCases:
             spoken_summary=spoken,
             sms_summary=sms,
             order_id=str(order_id) if order_id else None,
+            sms_sent=sms_sent,
+            payment_required=payment_required,
         )
 
     async def add_item(
@@ -107,6 +183,9 @@ class CallOrderUseCases:
         special_instructions: str = "",
     ) -> ToolResponse:
         service = await self.get_service(restaurant_id, call_id)
+        closed = self._ensure_store_open(restaurant_id, service)
+        if closed is not None:
+            return closed
         if item_id:
             result = service.add_item_by_id(
                 item_id,
@@ -164,6 +243,9 @@ class CallOrderUseCases:
         customer_phone: str = "",
     ) -> ToolResponse:
         service = await self.get_service(restaurant_id, call_id)
+        closed = self._ensure_store_open(restaurant_id, service)
+        if closed is not None:
+            return closed
         if not service.cart.lines:
             result = OperationResult(
                 status=OrderResultStatus.VIOLATION,
@@ -176,7 +258,23 @@ class CallOrderUseCases:
             service.cart.customer_phone = normalize_phone(customer_phone)
 
         spoken, sms = service.get_summary()
-        phone = normalize_phone(customer_phone) if customer_phone else service.cart.customer_phone
+        phone = await self._resolve_customer_phone(restaurant_id, call_id, customer_phone)
+        if phone and not service.cart.customer_phone:
+            service.cart.customer_phone = phone
+        elif not phone:
+            phone = service.cart.customer_phone
+
+        parity = check_order_parity(
+            spoken_summary=spoken,
+            sms_summary=sms,
+            total_cents=service.cart.total_cents,
+        )
+        if not parity.ok:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Checkout parity check failed: {'; '.join(parity.errors)}",
+            )
+
         record = await self._order_store.create_order(
             restaurant_id=restaurant_id,
             call_id=call_id,
@@ -187,22 +285,137 @@ class CallOrderUseCases:
             status="open",
         )
         if record is None:
-            result = OperationResult(
-                status=OrderResultStatus.SUCCESS,
-                message="Order confirmed (database persistence disabled).",
+            order_id = uuid.uuid4()
+            record = OrderRecord(
+                id=order_id,
+                restaurant_id=restaurant_id,
+                call_id=call_id,
+                customer_phone=phone,
+                status="open",
                 cart=service.cart,
+                spoken_summary=spoken,
+                sms_summary=sms,
             )
-            return self.build_response(service, result)
+            self._memory_orders[order_id] = record
 
         key = self._session_key(restaurant_id, call_id)
         self._active_order_ids[key] = record.id
         await self.persist_session(restaurant_id, call_id, service)
+
+        sms_sent = False
+        settings = get_settings()
+        if phone and sms:
+            sms_result = await send_order_sms(
+                settings.sms_gateway_url,
+                SendSmsRequest(
+                    order_id=str(record.id),
+                    to_phone=phone,
+                    body=sms,
+                    restaurant_id=restaurant_id,
+                ),
+            )
+            sms_sent = sms_result.status == "sent"
+            if sms_sent and sms_result.sms_id:
+                await self._sms_store.save_message(
+                    order_id=record.id,
+                    sms_id=sms_result.sms_id,
+                    restaurant_id=restaurant_id,
+                    to_phone=phone,
+                    body=sms,
+                    status=sms_result.status,
+                )
+
         result = OperationResult(
             status=OrderResultStatus.SUCCESS,
             message=f"Order confirmed. Your order ID is {record.id}.",
             cart=service.cart,
         )
-        return self.build_response(service, result, order_id=record.id)
+        return self.build_response(
+            service,
+            result,
+            order_id=record.id,
+            sms_sent=sms_sent,
+            payment_required=True,
+        )
+
+    async def capture_payment(
+        self,
+        restaurant_id: str,
+        order_id: str,
+        *,
+        card_number: str,
+        exp_month: int,
+        exp_year: int,
+        cvv: str,
+        call_id: str = "",
+    ) -> PaymentCaptureResponse:
+        try:
+            oid = uuid.UUID(order_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid order ID.") from exc
+
+        record = await self._get_order_record(oid)
+        if record is None or record.restaurant_id != restaurant_id:
+            raise HTTPException(status_code=404, detail="Order not found.")
+
+        amount = record.cart.total_cents
+        settings = get_settings()
+        charge = await charge_payment(
+            settings.payment_service_url,
+            ChargeRequest(
+                order_id=str(record.id),
+                amount_cents=amount,
+                card_number=card_number,
+                exp_month=exp_month,
+                exp_year=exp_year,
+                cvv=cvv,
+                call_id=call_id,
+            ),
+        )
+        if charge.status == "succeeded":
+            parity = check_order_parity(
+                spoken_summary=record.spoken_summary or "",
+                sms_summary=record.sms_summary or "",
+                total_cents=amount,
+                payment_cents=amount,
+            )
+            if not parity.ok:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Payment parity check failed: {'; '.join(parity.errors)}",
+                )
+            await self._order_store.update_status(oid, "paid")
+            if charge.charge_id:
+                await self._payment_store.save_charge(
+                    order_id=oid,
+                    charge_id=charge.charge_id,
+                    amount_cents=amount,
+                    last_four=charge.last_four,
+                    token=charge.token,
+                    status=charge.status,
+                    call_id=call_id,
+                )
+            if oid in self._memory_orders:
+                mem = self._memory_orders[oid]
+                self._memory_orders[oid] = OrderRecord(
+                    id=mem.id,
+                    restaurant_id=mem.restaurant_id,
+                    call_id=mem.call_id,
+                    customer_phone=mem.customer_phone,
+                    status="paid",
+                    cart=mem.cart,
+                    spoken_summary=mem.spoken_summary,
+                    sms_summary=mem.sms_summary,
+                    created_at=mem.created_at,
+                )
+        return PaymentCaptureResponse(
+            status=charge.status,
+            message=charge.message,
+            order_id=str(record.id),
+            amount_cents=amount,
+            last_four=charge.last_four,
+            charge_id=charge.charge_id,
+        )
 
     async def resume_order_by_phone(
         self,
@@ -232,6 +445,24 @@ class CallOrderUseCases:
             cart=service.cart,
         )
         return self.build_response(service, result, order_id=record.id)
+
+    def escalate_call(self, restaurant_id: str, call_id: str, reason: str = "") -> dict:
+        """Sprint 5.6 — return staff transfer target for human escalation."""
+        status = self.store_status(restaurant_id)
+        phone = status.get("escalation_phone")
+        if not phone:
+            raise HTTPException(
+                status_code=404,
+                detail="No escalation phone configured for this restaurant.",
+            )
+        why = reason.strip() or "customer_requested"
+        return {
+            "status": "escalating",
+            "call_id": call_id,
+            "reason": why,
+            "transfer_to": phone,
+            "message": "Please hold while I connect you with a team member.",
+        }
 
     async def invoke_tool(
         self,

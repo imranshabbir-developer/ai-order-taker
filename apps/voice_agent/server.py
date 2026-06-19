@@ -94,9 +94,17 @@ async def voice_turn(call_id: str, body: VoiceTurnRequest) -> dict[str, Any]:
 async def voice_websocket(websocket: WebSocket, call_id: str) -> None:
     await websocket.accept()
     restaurant_id = websocket.query_params.get("restaurant_id", "hot_bagels_2nd_street")
+    caller_phone = websocket.query_params.get("caller_phone", "")
     session = _get_or_create_session(call_id, restaurant_id)
 
     try:
+        from dialogue.order_client import OrderApiClient
+        from dialogue.settings import get_dialogue_settings
+
+        settings = get_dialogue_settings()
+        if caller_phone:
+            client = OrderApiClient(settings.order_api_base_url)
+            await client.start_call(restaurant_id, session.call_id, caller_phone)
         greeting = await session.start()
         await websocket.send_text(json.dumps(session.to_web_payload(greeting, event="greeting")))
 
@@ -107,6 +115,11 @@ async def voice_websocket(websocket: WebSocket, call_id: str) -> None:
 
             if msg_type == "ping":
                 await websocket.send_text(json.dumps({"type": "pong"}))
+                continue
+
+            if msg_type == "interrupt":
+                session._busy = False
+                await websocket.send_text(json.dumps({"type": "interrupted"}))
                 continue
 
             if msg_type == "audio":

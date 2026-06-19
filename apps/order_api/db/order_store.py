@@ -93,6 +93,18 @@ class OrderStore:
             row = result.scalar_one_or_none()
             return _to_record(row) if row else None
 
+    async def update_status(self, order_id: uuid.UUID, status: str) -> OrderRecord | None:
+        if not database_configured():
+            return None
+        async with get_db_session() as session:
+            await session.execute(
+                update(OrderRow).where(OrderRow.id == order_id).values(status=status)
+            )
+            await session.commit()
+            result = await session.execute(select(OrderRow).where(OrderRow.id == order_id))
+            row = result.scalar_one_or_none()
+            return _to_record(row) if row else None
+
     async def find_latest_open_by_phone(
         self,
         restaurant_id: str,

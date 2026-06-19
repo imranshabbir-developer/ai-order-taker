@@ -8,6 +8,8 @@ from httpx import ASGITransport, AsyncClient
 
 # Default integration tests run without Postgres (fast, isolated).
 os.environ["DATABASE_URL"] = ""
+os.environ["REDIS_URL"] = ""
+os.environ["ENFORCE_STORE_HOURS"] = "false"
 
 from apps.order_api.db.engine import init_database  # noqa: E402
 from apps.order_api.main import app  # noqa: E402
