@@ -24,9 +24,9 @@ def test_advance_phase_clarification() -> None:
     assert phase == DialoguePhase.CLARIFYING
 
 
-def test_advance_phase_checkout_complete() -> None:
+def test_advance_phase_checkout_payment() -> None:
     phase = advance_phase(DialoguePhase.CONFIRMING, "checkout", "success")
-    assert phase == DialoguePhase.COMPLETE
+    assert phase == DialoguePhase.PAYMENT
 
 
 def test_format_tool_result_clarification() -> None:

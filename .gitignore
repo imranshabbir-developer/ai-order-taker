@@ -57,6 +57,7 @@ apps/admin/dist/
 # --- Logs & runtime ---
 *.log
 logs/
+output/
 *.pid
 *.seed
 *.pid.lock

@@ -36,5 +36,8 @@ phase_hints:
   ordering: "Take items one at a time. Use check_ambiguity when the phrase spans categories."
   clarifying: "The order engine needs a choice — ask a short clarifying question."
   confirming: "Read back spoken_summary from get_cart and ask if the order is correct."
-  payment: "Payment collection is not live yet — confirm pickup and total from spoken_summary."
+  payment: >
+    After checkout, tell the customer the total from spoken_summary and ask them to enter
+    card details on the keypad or speak digits when prompted. Never repeat full card numbers.
+    Payment is handled outside this chat — confirm only the last four digits if payment succeeds.
   complete: "Thank the customer and share the order id if checkout succeeded."

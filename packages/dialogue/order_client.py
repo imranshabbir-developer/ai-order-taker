@@ -46,6 +46,44 @@ class OrderApiClient:
             response = await client.post(f"{self._call_path(restaurant_id, call_id)}/reset")
             response.raise_for_status()
 
+    async def start_call(
+        self, restaurant_id: str, call_id: str, caller_phone: str = ""
+    ) -> dict[str, Any]:
+        payload = {"caller_phone": caller_phone} if caller_phone else {}
+        async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._call_path(restaurant_id, call_id)}/start",
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def capture_payment(
+        self,
+        restaurant_id: str,
+        order_id: str,
+        *,
+        card_number: str,
+        exp_month: int,
+        exp_year: int,
+        cvv: str,
+        call_id: str = "",
+    ) -> dict[str, Any]:
+        params = {"call_id": call_id} if call_id else {}
+        async with httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout) as client:
+            response = await client.post(
+                f"/v1/restaurants/{restaurant_id}/orders/{order_id}/payment",
+                params=params,
+                json={
+                    "card_number": card_number,
+                    "exp_month": exp_month,
+                    "exp_year": exp_year,
+                    "cvv": cvv,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+
     async def invoke_tool(
         self,
         restaurant_id: str,

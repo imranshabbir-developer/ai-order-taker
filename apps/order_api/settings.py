@@ -32,6 +32,9 @@ class Settings(BaseSettings):
 
     database_url: str = ""
     redis_url: str = "redis://127.0.0.1:6379/0"
+    payment_service_url: str = ""
+    sms_gateway_url: str = ""
+    enforce_store_hours: bool = True
 
     @property
     def async_database_url(self) -> str:

@@ -80,6 +80,16 @@ SCENARIOS: list[dict[str, str | list[str]]] = [
         "expected_status": "success",
     },
     {
+        "id": "12",
+        "name": "Spoken card payment",
+        "utterances": [
+            "Cream cheese sandwich",
+            "That's correct, please checkout",
+        ],
+        "expected_status": "success",
+        "requires_payment": True,
+    },
+    {
         "id": "13",
         "name": "SMS/spoken parity",
         "utterances": [

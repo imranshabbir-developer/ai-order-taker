@@ -45,6 +45,8 @@ class ToolResponse(BaseModel):
     spoken_summary: str | None = None
     sms_summary: str | None = None
     order_id: str | None = None
+    sms_sent: bool | None = None
+    payment_required: bool | None = None
 
 
 class OrderSummaryResponse(BaseModel):
@@ -56,3 +58,78 @@ class OrderSummaryResponse(BaseModel):
     cart: dict
     spoken_summary: str | None = None
     sms_summary: str | None = None
+    created_at: str | None = None
+    total_cents: int | None = None
+
+
+class OrderListItem(BaseModel):
+    order_id: str
+    call_id: str
+    customer_phone: str | None
+    status: str
+    total_cents: int
+    item_count: int
+    created_at: str | None
+    summary_preview: str | None = None
+
+
+class OrderListResponse(BaseModel):
+    filter: str
+    timezone: str
+    count: int
+    orders: list[OrderListItem]
+
+
+class OrderDetailResponse(OrderSummaryResponse):
+    payments: list[dict[str, Any]] = Field(default_factory=list)
+    sms_messages: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PaymentCaptureRequest(BaseModel):
+    card_number: str
+    exp_month: int = Field(ge=1, le=12)
+    exp_year: int = Field(ge=0, le=9999)
+    cvv: str
+
+
+class PaymentCaptureResponse(BaseModel):
+    status: str
+    message: str
+    order_id: str
+    amount_cents: int
+    last_four: str | None = None
+    charge_id: str | None = None
+
+
+class StoreStatusResponse(BaseModel):
+    is_open: bool
+    message: str
+    delivery_available: bool
+    delivery_message: str
+    escalation_phone: str | None = None
+
+
+class CallStartRequest(BaseModel):
+    caller_phone: str = ""
+
+
+class CallStartResponse(BaseModel):
+    call_id: str
+    restaurant_id: str
+    is_open: bool
+    message: str
+    delivery_available: bool
+    delivery_message: str
+    escalation_phone: str | None = None
+
+
+class EscalationRequest(BaseModel):
+    reason: str = "customer_requested"
+
+
+class EscalationResponse(BaseModel):
+    status: str
+    call_id: str
+    reason: str
+    transfer_to: str
+    message: str

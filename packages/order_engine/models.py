@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class OrderResultStatus(StrEnum):
@@ -100,6 +100,7 @@ class Cart(BaseModel):
     order_note: str = ""
     customer_phone: str = ""
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def total_cents(self) -> int:
         return sum(line.line_total_cents for line in self.lines)

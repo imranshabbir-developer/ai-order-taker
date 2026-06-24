@@ -1,0 +1,25 @@
+{
+  "restaurant_id": "demo_cafe",
+  "_mock": true,
+  "timezone": "America/New_York",
+  "store_hours": {
+    "monday": {"open": "07:00", "close": "20:00"},
+    "tuesday": {"open": "07:00", "close": "20:00"},
+    "wednesday": {"open": "07:00", "close": "20:00"},
+    "thursday": {"open": "07:00", "close": "20:00"},
+    "friday": {"open": "07:00", "close": "20:00"},
+    "saturday": {"open": "08:00", "close": "18:00"},
+    "sunday": {"open": "08:00", "close": "16:00"}
+  },
+  "ordering_modes": {
+    "pickup": {"enabled": true, "minimum_order_cents": 0},
+    "delivery": {"enabled": false, "minimum_order_cents": 0}
+  },
+  "contact_channels": {
+    "escalation_staff_phone": "+1-555-010-0299",
+    "primary_store_phone": "+1-555-010-0200"
+  },
+  "agent_prompts_and_messages": {
+    "closed_store_message": "Demo Cafe is currently closed."
+  }
+}

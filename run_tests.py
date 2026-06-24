@@ -1,4 +1,5 @@
 """Run scenario tests — sets PYTHONPATH automatically."""
+
 from __future__ import annotations
 
 import subprocess

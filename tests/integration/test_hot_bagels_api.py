@@ -24,6 +24,7 @@ async def test_health(client: AsyncClient) -> None:
     body = r.json()
     assert body["status"] == "ok"
     assert body["database"] in ("disabled", "connected", "unavailable")
+    assert body.get("redis") in ("disabled", "connected", "unavailable", None)
 
 
 @pytest.mark.asyncio

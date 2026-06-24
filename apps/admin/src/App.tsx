@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   checkHealth,
+  fetchCart,
   fetchConfig,
   fetchMenu,
   fetchRestaurants,
@@ -17,10 +18,20 @@ import {
   RESTAURANT,
 } from "./api";
 
-type Tab = "dashboard" | "menu" | "scenarios" | "operations" | "integrations" | "cart";
+import { OrderDetailView, OrdersView } from "./OrdersView";
+
+function initialCallId(): string {
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = params.get("call") || params.get("call_id");
+  if (fromUrl?.trim()) return fromUrl.trim();
+  return crypto.randomUUID().slice(0, 8);
+}
+
+type Tab = "dashboard" | "orders" | "order-detail" | "menu" | "scenarios" | "operations" | "integrations" | "cart";
 
 const NAV: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "orders", label: "Orders" },
   { id: "menu", label: "Menu" },
   { id: "scenarios", label: "Test Scenarios" },
   { id: "operations", label: "Operations" },
@@ -29,9 +40,13 @@ const NAV: { id: Tab; label: string }[] = [
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const params = new URLSearchParams(window.location.search);
+  const initialOrder = params.get("order");
+  const [tab, setTab] = useState<Tab>(initialOrder ? "order-detail" : "dashboard");
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(initialOrder);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
-  const [callId] = useState(() => crypto.randomUUID().slice(0, 8));
+  const [callId, setCallId] = useState(initialCallId);
+  const [cartSource, setCartSource] = useState<"demo" | "voice" | "scenario" | null>(null);
   const [restaurants, setRestaurants] = useState<RestaurantInfo[]>([]);
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [menu, setMenu] = useState<MenuResponse | null>(null);
@@ -65,12 +80,63 @@ export default function App() {
     load();
   }, [load]);
 
+  const openOrderDetail = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setTab("order-detail");
+    const url = new URL(window.location.href);
+    url.searchParams.set("order", orderId);
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const openCallCartFromOrder = (voiceCallId: string) => {
+    setCallId(voiceCallId);
+    setCartSource("voice");
+    void loadLiveCart(voiceCallId);
+  };
+
+  const loadLiveCart = useCallback(async (id?: string) => {
+    const sessionId = (id ?? callId).trim();
+    if (!sessionId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchCart(sessionId);
+      setLastResult(result);
+      setCartSource(sessionId.startsWith("web-") ? "voice" : "demo");
+      setTab("cart");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load cart");
+    } finally {
+      setLoading(false);
+    }
+  }, [callId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("call") || params.get("call_id");
+    if (!fromUrl?.trim() || !apiOk) return;
+    const sessionId = fromUrl.trim();
+    setCallId(sessionId);
+    setLoading(true);
+    fetchCart(sessionId)
+      .then((result) => {
+        setLastResult(result);
+        setCartSource(sessionId.startsWith("web-") ? "voice" : "demo");
+        setTab("cart");
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Failed to load cart");
+      })
+      .finally(() => setLoading(false));
+  }, [apiOk]);
+
   const runDemo = async () => {
     setLoading(true);
     setError(null);
     try {
       const result = await runDemoOrder(callId);
       setLastResult(result);
+      setCartSource("demo");
       setTab("cart");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Demo failed");
@@ -86,6 +152,7 @@ export default function App() {
       await resetCall(callId);
       const result = await runScenario(callId, scenarioId);
       setLastResult(result);
+      setCartSource("scenario");
       const pass = ["success", "clarification", "violation", "advance_notice"].includes(result.status);
       setScenarioResults((prev) => ({
         ...prev,
@@ -118,16 +185,38 @@ export default function App() {
           {NAV.map((n) => (
             <button
               key={n.id}
-              className={tab === n.id ? "active" : ""}
-              onClick={() => setTab(n.id)}
+              className={tab === n.id || (n.id === "orders" && tab === "order-detail") ? "active" : ""}
+              onClick={() => {
+                if (n.id === "orders") {
+                  setTab("orders");
+                  setSelectedOrderId(null);
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("order");
+                  window.history.replaceState({}, "", url.toString());
+                } else {
+                  setTab(n.id);
+                }
+              }}
             >
               {n.label}
             </button>
           ))}
         </nav>
         <div className="sidebar-footer">
-          <small>Call session</small>
-          <code>{callId}</code>
+          <small>Call session (voice + API)</small>
+          <input
+            className="call-id-input"
+            value={callId}
+            onChange={(e) => setCallId(e.target.value)}
+            placeholder="web-… or demo id"
+          />
+          <button
+            className="secondary small full-width"
+            disabled={loading || !apiOk || !callId.trim()}
+            onClick={() => loadLiveCart()}
+          >
+            Load live cart
+          </button>
         </div>
       </aside>
 
@@ -158,10 +247,25 @@ export default function App() {
             </div>
             <div className="card">
               <h2>Quick actions</h2>
-              <p>Run a demo order (cream cheese sandwich + coffee) and verify Test 13 SMS parity.</p>
+              <p>
+                After a <strong>voice call</strong> on port 8090, copy the Call ID (e.g.{" "}
+                <code>web-ef5d62ae</code>) into the sidebar and click <strong>Load live cart</strong>.
+                Or use the link on the voice page.
+              </p>
+              <p className="muted">
+                <strong>Run Demo Order</strong> uses this dashboard&apos;s own session — not the voice
+                session.
+              </p>
               <div className="btn-row">
                 <button className="primary" onClick={runDemo} disabled={loading || !apiOk}>
                   {loading ? "Running…" : "Run Demo Order"}
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => loadLiveCart()}
+                  disabled={loading || !apiOk || !callId.trim()}
+                >
+                  Load live cart
                 </button>
                 <button className="secondary" onClick={load} disabled={!apiOk}>
                   Refresh data
@@ -176,6 +280,16 @@ export default function App() {
               </p>
             </div>
           </>
+        )}
+
+        {tab === "orders" && <OrdersView onSelectOrder={openOrderDetail} />}
+
+        {tab === "order-detail" && selectedOrderId && (
+          <OrderDetailView
+            orderId={selectedOrderId}
+            onBack={() => setTab("orders")}
+            onOpenCallCart={openCallCartFromOrder}
+          />
         )}
 
         {tab === "menu" && menu && (
@@ -330,6 +444,28 @@ export default function App() {
           <>
             <div className="card">
               <h2>Cart Inspector</h2>
+              <p className="muted">
+                Session <code>{callId}</code>
+                {cartSource === "voice" && " — live voice order"}
+                {cartSource === "demo" && " — dashboard demo"}
+                {cartSource === "scenario" && " — test scenario"}
+              </p>
+              <div className="btn-row">
+                <button
+                  className="secondary small"
+                  onClick={() => loadLiveCart()}
+                  disabled={loading || !apiOk}
+                >
+                  {loading ? "Loading…" : "Refresh cart from API"}
+                </button>
+              </div>
+              {lastResult && lastResult.cart && (lastResult.cart as { lines?: unknown[] }).lines?.length === 0 && (
+                <div className="alert alert-error">
+                  Cart is empty. If you used voice, open{" "}
+                  <code>http://localhost:5173/?call=web-…</code> with the voice Call ID — not
+                  this dashboard session (<code>{callId}</code>).
+                </div>
+              )}
               {lastResult ? (
                 <>
                   <p>
@@ -345,7 +481,11 @@ export default function App() {
                   </div>
                 </>
               ) : (
-                <p>Run a scenario or demo order first.</p>
+                <p>
+                  Paste the voice <strong>Call ID</strong> from port 8090 into the sidebar, then click{" "}
+                  <strong>Load live cart</strong>. Questions-only turns (e.g. &quot;do you have pizza?&quot;)
+                  may leave the cart empty until you order items.
+                </p>
               )}
             </div>
             {lastResult && (
