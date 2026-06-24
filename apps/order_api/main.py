@@ -26,6 +26,8 @@ from apps.order_api.schemas import (
     CheckoutRequest,
     EscalationRequest,
     EscalationResponse,
+    OrderDetailResponse,
+    OrderListResponse,
     OrderSummaryResponse,
     PaymentCaptureRequest,
     PaymentCaptureResponse,
@@ -346,6 +348,20 @@ async def resume_from_phone(
     return await use_cases.resume_order_by_phone(restaurant_id, call_id, body.customer_phone)
 
 
+@app.get("/v1/restaurants/{restaurant_id}/orders", response_model=OrderListResponse)
+async def list_orders(
+    restaurant_id: str,
+    day: str = "today",
+    limit: int = 100,
+) -> OrderListResponse:
+    """List orders filtered by calendar day in restaurant timezone (today|tomorrow|all)."""
+    day_filter = day.strip().lower()
+    if day_filter not in {"today", "tomorrow", "all"}:
+        raise HTTPException(status_code=400, detail="day must be today, tomorrow, or all")
+    items, tz = await use_cases.list_orders(restaurant_id, day=day_filter, limit=min(limit, 200))
+    return OrderListResponse(filter=day_filter, timezone=tz, count=len(items), orders=items)
+
+
 @app.get("/v1/restaurants/{restaurant_id}/orders/by-phone/{customer_phone}")
 async def get_order_by_phone(restaurant_id: str, customer_phone: str) -> OrderSummaryResponse:
     record = await _order_store.find_latest_open_by_phone(restaurant_id, customer_phone)
@@ -360,19 +376,23 @@ async def get_order_by_phone(restaurant_id: str, customer_phone: str) -> OrderSu
         cart=record.cart.model_dump(),
         spoken_summary=record.spoken_summary,
         sms_summary=record.sms_summary,
+        created_at=record.created_at.isoformat() if record.created_at else None,
+        total_cents=record.cart.total_cents,
     )
 
 
-@app.get("/v1/restaurants/{restaurant_id}/orders/{order_id}")
-async def get_order(restaurant_id: str, order_id: str) -> OrderSummaryResponse:
+@app.get("/v1/restaurants/{restaurant_id}/orders/{order_id}", response_model=OrderDetailResponse)
+async def get_order(restaurant_id: str, order_id: str) -> OrderDetailResponse:
     try:
         oid = UUID(order_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid order ID.") from exc
-    record = await _order_store.get_order(oid)
+    record = await use_cases._get_order_record(oid)
     if record is None or record.restaurant_id != restaurant_id:
         raise HTTPException(status_code=404, detail="Order not found.")
-    return OrderSummaryResponse(
+    payments = await _payment_store.list_for_order(oid)
+    messages = await _sms_store.list_for_order(oid)
+    return OrderDetailResponse(
         order_id=str(record.id),
         restaurant_id=record.restaurant_id,
         call_id=record.call_id,
@@ -381,6 +401,28 @@ async def get_order(restaurant_id: str, order_id: str) -> OrderSummaryResponse:
         cart=record.cart.model_dump(),
         spoken_summary=record.spoken_summary,
         sms_summary=record.sms_summary,
+        created_at=record.created_at.isoformat() if record.created_at else None,
+        total_cents=record.cart.total_cents,
+        payments=[
+            {
+                "charge_id": p.charge_id,
+                "amount_cents": p.amount_cents,
+                "last_four": p.last_four,
+                "status": p.status,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in payments
+        ],
+        sms_messages=[
+            {
+                "sms_id": m.sms_id,
+                "to_phone": m.to_phone,
+                "body": m.body,
+                "status": m.status,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in messages
+        ],
     )
 
 

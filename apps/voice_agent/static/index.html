@@ -9,31 +9,36 @@
     body { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
     h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
     .sub { color: #666; margin-bottom: 1.5rem; }
-    #log { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; min-height: 240px; white-space: pre-wrap; }
-    .row { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
+    #log { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; min-height: 240px; }
+    .row { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; align-items: center; }
     button { padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
     button.primary { background: #c45a11; color: #fff; border-color: #a3470d; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     input { flex: 1; min-width: 200px; padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; }
     .latency { color: #888; font-size: 0.85rem; }
+    .thinking { color: #c45a11; font-weight: 600; }
+    .error { color: #b91c1c; font-weight: 600; }
+    #statusBar { font-size: 0.9rem; color: #555; }
   </style>
 </head>
 <body>
   <h1>Hot Bagels Voice Test</h1>
-  <p class="sub">Sprint 4.7 — browser client (Web Speech + server TTS). Requires Order API + Voice server running.</p>
+  <p class="sub">Speak or type an order. Wait for <strong>Agent:</strong> reply (usually 5–15s with Groq LLM).</p>
+  <p id="statusBar">Not connected</p>
 
   <div class="row">
     <button id="connectBtn" class="primary">Connect</button>
-    <button id="listenBtn" disabled>🎤 Speak</button>
+    <button id="listenBtn" disabled>Speak</button>
     <button id="sendBtn" disabled>Send Text</button>
   </div>
   <div class="row">
-    <input id="textInput" placeholder="Or type your order here..." />
+    <input id="textInput" placeholder="e.g. cream cheese sandwich and iced coffee" />
   </div>
   <div id="log"></div>
 
   <script>
     const logEl = document.getElementById('log');
+    const statusBar = document.getElementById('statusBar');
     const connectBtn = document.getElementById('connectBtn');
     const listenBtn = document.getElementById('listenBtn');
     const sendBtn = document.getElementById('sendBtn');
@@ -43,6 +48,27 @@
     const wsUrl = `ws://${location.host}/ws/voice/${callId}?restaurant_id=hot_bagels_2nd_street`;
     let ws = null;
     let recognition = null;
+    let processing = false;
+    let thinkingEl = null;
+
+    function setProcessing(on) {
+      processing = on;
+      listenBtn.disabled = on || !ws;
+      sendBtn.disabled = on || !ws;
+      textInput.disabled = on;
+      if (on) {
+        thinkingEl = document.createElement('div');
+        thinkingEl.className = 'thinking';
+        thinkingEl.textContent = 'Agent is thinking… (LLM + order engine)';
+        logEl.appendChild(thinkingEl);
+        logEl.scrollTop = logEl.scrollHeight;
+        statusBar.textContent = 'Processing your request…';
+      } else if (thinkingEl) {
+        thinkingEl.remove();
+        thinkingEl = null;
+        statusBar.textContent = 'Connected — Call ID: ' + callId;
+      }
+    }
 
     function append(text, cls = '') {
       const line = document.createElement('div');
@@ -55,13 +81,44 @@
     function playBase64Audio(b64) {
       if (!b64) return;
       const audio = new Audio('data:audio/mpeg;base64,' + b64);
-      audio.play().catch(() => append('(Could not autoplay audio — click page first)'));
+      audio.play().catch(() => append('(Click page once if audio does not play)'));
+    }
+
+    function handleReply(msg) {
+      setProcessing(false);
+      if (msg.transcript) append('You: ' + msg.transcript);
+      append('Agent: ' + (msg.assistant_message || '(no message)'));
+      if (msg.engine_status) {
+        append('  engine: ' + msg.engine_status + ' — ' + (msg.engine_message || ''), 'latency');
+      }
+      if (msg.latency_ms) append('  latency: ' + JSON.stringify(msg.latency_ms), 'latency');
+      playBase64Audio(msg.audio_base64);
+      if (msg.engine_message) {
+        const m = msg.engine_message.match(/order ID is ([0-9a-f-]{36})/i);
+        if (m) {
+          const orderUrl = 'http://localhost:5173/?order=' + encodeURIComponent(m[1]);
+          const olink = document.createElement('div');
+          olink.innerHTML = 'Order detail: <a href="' + orderUrl + '" target="_blank" rel="noopener">' + orderUrl + '</a>';
+          logEl.appendChild(olink);
+        }
+      }
+    }
+
+    function sendUserText(text) {
+      if (!text || !ws || processing) return;
+      setProcessing(true);
+      ws.send(JSON.stringify({ type: 'text', text }));
     }
 
     connectBtn.onclick = () => {
       ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         append('Connected. Call ID: ' + callId);
+        statusBar.textContent = 'Connected — Call ID: ' + callId;
+        const dashUrl = `http://localhost:5173/?call=${encodeURIComponent(callId)}`;
+        const link = document.createElement('div');
+        link.innerHTML = 'Dashboard: <a href="' + dashUrl + '" target="_blank" rel="noopener">Cart</a> · <a href="http://localhost:5173/" target="_blank" rel="noopener">Orders</a>';
+        logEl.appendChild(link);
         listenBtn.disabled = false;
         sendBtn.disabled = false;
         connectBtn.disabled = true;
@@ -69,21 +126,29 @@
       ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data);
         if (msg.type === 'greeting' || msg.type === 'reply') {
-          if (msg.transcript) append('You: ' + msg.transcript);
-          append('Agent: ' + msg.assistant_message);
-          if (msg.engine_status) append('  engine: ' + msg.engine_status + ' — ' + msg.engine_message, 'latency');
-          if (msg.latency_ms) append('  latency: ' + JSON.stringify(msg.latency_ms), 'latency');
-          playBase64Audio(msg.audio_base64);
+          handleReply(msg);
+        } else if (msg.type === 'error') {
+          setProcessing(false);
+          append('Error: ' + msg.message, 'error');
+          if (msg.hint) append(msg.hint, 'error');
         }
       };
-      ws.onclose = () => append('Disconnected.');
-      ws.onerror = () => append('WebSocket error.');
+      ws.onclose = () => {
+        setProcessing(false);
+        append('Disconnected.');
+        statusBar.textContent = 'Disconnected';
+      };
+      ws.onerror = () => {
+        setProcessing(false);
+        append('WebSocket error — is voice server running?', 'error');
+      };
     };
 
     sendBtn.onclick = () => {
       const text = textInput.value.trim();
-      if (!text || !ws) return;
-      ws.send(JSON.stringify({ type: 'text', text }));
+      if (!text) return;
+      append('You (typed): ' + text);
+      sendUserText(text);
       textInput.value = '';
     };
 
@@ -99,10 +164,12 @@
       recognition.onresult = (ev) => {
         const text = ev.results[0][0].transcript;
         append('Heard: ' + text);
-        if (ws) ws.send(JSON.stringify({ type: 'text', text }));
+        sendUserText(text);
       };
-      recognition.onerror = (ev) => append('Mic error: ' + ev.error);
-      listenBtn.onclick = () => recognition.start();
+      recognition.onerror = (ev) => append('Mic error: ' + ev.error, 'error');
+      listenBtn.onclick = () => {
+        if (!processing) recognition.start();
+      };
     } else {
       listenBtn.disabled = true;
       append('Web Speech API not supported — use text input.');

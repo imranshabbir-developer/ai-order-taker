@@ -60,12 +60,23 @@ class VoiceOrderSession:
         self._turn_counter = 0
 
         order_client = OrderApiClient(self._dialogue_settings.order_api_base_url)
-        llm_client = llm or OpenAICompatibleLLM(
-            base_url=self._dialogue_settings.llm_base_url,
-            model=self._dialogue_settings.llm_model,
-            api_key=self._dialogue_settings.llm_api_key,
-            timeout=self._dialogue_settings.llm_timeout_seconds,
-        )
+        if llm is not None:
+            llm_client = llm
+        elif self._voice_settings.voice_llm_base_url.strip():
+            llm_client = OpenAICompatibleLLM(
+                base_url=self._voice_settings.voice_llm_base_url,
+                model=self._voice_settings.voice_llm_model,
+                api_key=self._voice_settings.voice_llm_api_key
+                or self._voice_settings.effective_stt_api_key,
+                timeout=self._dialogue_settings.llm_timeout_seconds,
+            )
+        else:
+            llm_client = OpenAICompatibleLLM(
+                base_url=self._dialogue_settings.llm_base_url,
+                model=self._dialogue_settings.llm_model,
+                api_key=self._dialogue_settings.llm_api_key,
+                timeout=self._dialogue_settings.llm_timeout_seconds,
+            )
         prompts = load_prompts(self._restaurant_id)
         self._agent = DialogueAgent(
             llm_client,

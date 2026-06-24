@@ -58,6 +58,31 @@ class OrderSummaryResponse(BaseModel):
     cart: dict
     spoken_summary: str | None = None
     sms_summary: str | None = None
+    created_at: str | None = None
+    total_cents: int | None = None
+
+
+class OrderListItem(BaseModel):
+    order_id: str
+    call_id: str
+    customer_phone: str | None
+    status: str
+    total_cents: int
+    item_count: int
+    created_at: str | None
+    summary_preview: str | None = None
+
+
+class OrderListResponse(BaseModel):
+    filter: str
+    timezone: str
+    count: int
+    orders: list[OrderListItem]
+
+
+class OrderDetailResponse(OrderSummaryResponse):
+    payments: list[dict[str, Any]] = Field(default_factory=list)
+    sms_messages: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class PaymentCaptureRequest(BaseModel):

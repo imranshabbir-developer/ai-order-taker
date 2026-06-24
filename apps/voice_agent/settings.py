@@ -20,6 +20,11 @@ class VoiceSettings(BaseSettings):
     tts_voice: str = "en-US-JennyNeural"
     tts_enabled: bool = True
 
+    # Live voice should use a fast LLM (Groq). Ollama on CPU can take 2–3 min/turn.
+    voice_llm_base_url: str = ""
+    voice_llm_model: str = "llama-3.1-8b-instant"
+    voice_llm_api_key: str = ""
+
     default_restaurant_id: str = "hot_bagels_2nd_street"
     models_dir: str = "models"
 

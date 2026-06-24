@@ -187,6 +187,56 @@ pre {
 
 .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
+.muted { color: #64748b; font-size: 0.9rem; }
+
+.filter-row { margin-top: 0.75rem; }
+
+.table-card { overflow-x: auto; }
+
+.orders-table { font-size: 0.82rem; }
+.orders-table th { white-space: nowrap; }
+.order-row { cursor: pointer; }
+.order-row:hover td { background: #f8fafc; }
+.empty-cell { text-align: center; color: #64748b; padding: 2rem !important; }
+.preview-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mono-sm { font-size: 0.75rem; }
+
+.status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.status-open { background: #dbeafe; color: #1d4ed8; }
+.status-paid { background: #dcfce7; color: #15803d; }
+.status-other { background: #f1f5f9; color: #475569; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.sms-block { margin-bottom: 1rem; }
+.sms-block pre { margin-top: 0.5rem; }
+
+.call-id-input {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+button.full-width { width: 100%; margin-top: 0.5rem; }
+
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }

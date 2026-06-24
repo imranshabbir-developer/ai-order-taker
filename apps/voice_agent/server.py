@@ -134,3 +134,20 @@ async def voice_websocket(websocket: WebSocket, call_id: str) -> None:
                 break
     except WebSocketDisconnect:
         return
+    except Exception as exc:
+        try:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": str(exc),
+                        "hint": (
+                            "Check Order API is running and ORDER_API_BASE_URL "
+                            "matches run_api.py port."
+                        ),
+                    }
+                )
+            )
+        except Exception:
+            pass
+        return

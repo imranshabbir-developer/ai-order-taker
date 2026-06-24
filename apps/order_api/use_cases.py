@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -11,12 +12,12 @@ from order_engine.order_service import OrderService
 from order_engine.parity import check_order_parity
 from order_engine.results import AddItemResult, OperationResult
 
-from apps.order_api.db.order_store import OrderRecord, OrderStore, normalize_phone
+from apps.order_api.db.order_store import OrderRecord, OrderStore, _day_bounds_utc, normalize_phone
 from apps.order_api.db.payment_store import PaymentStore
 from apps.order_api.db.session_store import SessionStore
 from apps.order_api.db.sms_store import SmsStore
 from apps.order_api.integrations import charge_payment, send_order_sms
-from apps.order_api.schemas import PaymentCaptureResponse, ToolResponse
+from apps.order_api.schemas import OrderListItem, PaymentCaptureResponse, ToolResponse
 from apps.order_api.settings import get_settings
 from apps.order_api.store_hours import delivery_available, is_store_open
 from apps.payment_service.schemas import ChargeRequest
@@ -295,6 +296,7 @@ class CallOrderUseCases:
                 cart=service.cart,
                 spoken_summary=spoken,
                 sms_summary=sms,
+                created_at=datetime.now(UTC),
             )
             self._memory_orders[order_id] = record
 
@@ -463,6 +465,55 @@ class CallOrderUseCases:
             "transfer_to": phone,
             "message": "Please hold while I connect you with a team member.",
         }
+
+    def _record_in_day(self, record: OrderRecord, day: str, timezone_name: str) -> bool:
+        if record.created_at is None:
+            return day == "all"
+        start, end = _day_bounds_utc(day, timezone_name)
+        created = record.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        return start <= created < end
+
+    async def list_orders(
+        self,
+        restaurant_id: str,
+        *,
+        day: str = "today",
+        limit: int = 100,
+    ) -> tuple[list[OrderListItem], str]:
+        bundle = self.get_bundle(restaurant_id)
+        tz = str(bundle.operations.get("timezone", "America/New_York"))
+        records = await self._order_store.list_orders(
+            restaurant_id, day=day, limit=limit, timezone_name=tz
+        )
+        seen = {r.id for r in records}
+        for mem in self._memory_orders.values():
+            if mem.restaurant_id != restaurant_id or mem.id in seen:
+                continue
+            if self._record_in_day(mem, day, tz):
+                records.append(mem)
+        records.sort(key=lambda r: r.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        records = records[:limit]
+        items = [self._to_list_item(r) for r in records]
+        return items, tz
+
+    def _to_list_item(self, record: OrderRecord) -> OrderListItem:
+        lines = record.cart.lines
+        preview = None
+        if record.spoken_summary:
+            preview = record.spoken_summary.strip().split("\n")[0][:120]
+        created = record.created_at.isoformat() if record.created_at else None
+        return OrderListItem(
+            order_id=str(record.id),
+            call_id=record.call_id,
+            customer_phone=record.customer_phone,
+            status=record.status,
+            total_cents=record.cart.total_cents,
+            item_count=len(lines),
+            created_at=created,
+            summary_preview=preview,
+        )
 
     async def invoke_tool(
         self,

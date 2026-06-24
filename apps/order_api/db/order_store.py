@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from order_engine.models import Cart
 from sqlalchemy import select, update
 
 from apps.order_api.db.engine import database_configured, get_db_session
 from apps.order_api.db.models import OrderRow
+from apps.order_api.store_hours import _resolve_tz
 
 
 @dataclass
@@ -126,6 +127,49 @@ class OrderStore:
             )
             row = result.scalar_one_or_none()
             return _to_record(row) if row else None
+
+    async def list_orders(
+        self,
+        restaurant_id: str,
+        *,
+        day: str = "today",
+        limit: int = 100,
+        timezone_name: str = "America/New_York",
+    ) -> list[OrderRecord]:
+        if not database_configured():
+            return []
+        start_utc, end_utc = _day_bounds_utc(day, timezone_name)
+        async with get_db_session() as session:
+            result = await session.execute(
+                select(OrderRow)
+                .where(
+                    OrderRow.restaurant_id == restaurant_id,
+                    OrderRow.created_at >= start_utc,
+                    OrderRow.created_at < end_utc,
+                )
+                .order_by(OrderRow.created_at.desc())
+                .limit(limit)
+            )
+            return [_to_record(row) for row in result.scalars().all()]
+
+
+def _day_bounds_utc(day: str, timezone_name: str) -> tuple[datetime, datetime]:
+    tz = _resolve_tz(timezone_name)
+    now_local = datetime.now(UTC).astimezone(tz)
+    if day == "tomorrow":
+        start_local = (now_local + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        end_local = start_local + timedelta(days=1)
+    elif day == "all":
+        end_local = (now_local + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        start_local = end_local - timedelta(days=30)
+    else:
+        start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(UTC), end_local.astimezone(UTC)
 
 
 def normalize_phone(phone: str) -> str:

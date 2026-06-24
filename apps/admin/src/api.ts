@@ -91,6 +91,10 @@ export async function runScenario(callId: string, scenarioId: string) {
   );
 }
 
+export async function fetchCart(callId: string) {
+  return apiGet<ToolResponse>(`/v1/restaurants/${RESTAURANT}/calls/${callId}/cart`);
+}
+
 export async function runDemoOrder(callId: string) {
   await resetCall(callId);
   await apiPost(`/v1/restaurants/${RESTAURANT}/calls/${callId}/tools/add_item`, {
@@ -104,4 +108,55 @@ export async function runDemoOrder(callId: string) {
 
 export function formatPrice(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+export type OrderListItem = {
+  order_id: string;
+  call_id: string;
+  customer_phone: string | null;
+  status: string;
+  total_cents: number;
+  item_count: number;
+  created_at: string | null;
+  summary_preview: string | null;
+};
+
+export type OrderDetail = {
+  order_id: string;
+  restaurant_id: string;
+  call_id: string;
+  customer_phone: string | null;
+  status: string;
+  cart: Record<string, unknown>;
+  spoken_summary: string | null;
+  sms_summary: string | null;
+  created_at: string | null;
+  total_cents: number | null;
+  payments: Array<{
+    charge_id: string;
+    amount_cents: number;
+    last_four: string | null;
+    status: string;
+    created_at: string | null;
+  }>;
+  sms_messages: Array<{
+    sms_id: string;
+    to_phone: string;
+    body: string;
+    status: string;
+    created_at: string | null;
+  }>;
+};
+
+export async function fetchOrders(day: "today" | "tomorrow" | "all" = "today") {
+  return apiGet<{
+    filter: string;
+    timezone: string;
+    count: number;
+    orders: OrderListItem[];
+  }>(`/v1/restaurants/${RESTAURANT}/orders?day=${day}`);
+}
+
+export async function fetchOrderDetail(orderId: string) {
+  return apiGet<OrderDetail>(`/v1/restaurants/${RESTAURANT}/orders/${orderId}`);
 }
