@@ -76,7 +76,7 @@ class DialogueAgent:
     async def start(self) -> AgentTurnResult:
         await self.reset()
         self._ensure_system()
-        greeting = self._prompts.greeting
+        greeting = self._prompts.render_greeting()
         self._messages.append({"role": "assistant", "content": greeting})
         self._phase = DialoguePhase.ORDERING
         self._messages[0] = {

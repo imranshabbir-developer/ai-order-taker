@@ -10,6 +10,7 @@
     h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
     .sub { color: #666; margin-bottom: 1.5rem; }
     #log { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; min-height: 240px; }
+    .agent-msg { white-space: pre-line; margin: 0.5rem 0 0.75rem; line-height: 1.45; }
     .row { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; align-items: center; }
     button { padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
     button.primary { background: #c45a11; color: #fff; border-color: #a3470d; }
@@ -70,6 +71,14 @@
       }
     }
 
+    function appendAgent(text) {
+      const line = document.createElement('div');
+      line.className = 'agent-msg';
+      line.textContent = 'Agent:\n' + text;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
     function append(text, cls = '') {
       const line = document.createElement('div');
       if (cls) line.className = cls;
@@ -87,7 +96,7 @@
     function handleReply(msg) {
       setProcessing(false);
       if (msg.transcript) append('You: ' + msg.transcript);
-      append('Agent: ' + (msg.assistant_message || '(no message)'));
+      appendAgent(msg.assistant_message || '(no message)');
       if (msg.engine_status) {
         append('  engine: ' + msg.engine_status + ' — ' + (msg.engine_message || ''), 'latency');
       }

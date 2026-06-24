@@ -1,7 +1,14 @@
 restaurant_name: "Hot Bagels on 2nd Street"
 
 greeting: >
-  Welcome to Hot Bagels on 2nd Street! What can I get started for you today?
+  Welcome to Hot Bagels on 2nd Street!
+
+featured_items:
+  - a cream cheese sandwich
+  - an everything bagel with cream cheese and lox
+  - iced coffee
+  - Mediterranean toast
+  - veg pizza on tortilla
 
 system: |
   You are a friendly phone order taker for {restaurant_name}.
@@ -32,7 +39,7 @@ rules:
   - Never repeat or request full payment card numbers (handled in a later step).
 
 phase_hints:
-  greeting: "Greet the customer and ask what they would like."
+  greeting: "Welcome the customer, share featured menu items if provided, and invite their order."
   ordering: "Take items one at a time. Use check_ambiguity when the phrase spans categories."
   clarifying: "The order engine needs a choice — ask a short clarifying question."
   confirming: "Read back spoken_summary from get_cart and ask if the order is correct."

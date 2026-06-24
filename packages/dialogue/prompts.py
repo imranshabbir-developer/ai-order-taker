@@ -11,9 +11,30 @@ class RestaurantPrompts(BaseModel):
     restaurant_id: str
     restaurant_name: str = "Restaurant"
     greeting: str = "Welcome! What would you like to order today?"
+    featured_items: list[str] = Field(default_factory=list)
     system: str = ""
     rules: list[str] = Field(default_factory=list)
     phase_hints: dict[str, str] = Field(default_factory=dict)
+
+    def render_greeting(self) -> str:
+        """Spoken welcome — optionally lists featured menu items for quick ordering."""
+        base = self.greeting.strip()
+        if not self.featured_items:
+            return base
+        count_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}.get(
+            len(self.featured_items), str(len(self.featured_items))
+        )
+        menu_lines = "\n".join(
+            f"{i}. {item.strip()[0].upper()}{item.strip()[1:]}"
+            for i, item in enumerate(self.featured_items, start=1)
+        )
+        return (
+            f"{base}\n\n"
+            f"Here are {count_word} popular items you can order:\n"
+            f"{menu_lines}\n\n"
+            "What would you like to order today? "
+            "You can say the item name or describe your order."
+        )
 
     def render_system(self, phase: str = "ordering") -> str:
         phase_hint = self.phase_hints.get(phase, "")
@@ -40,6 +61,7 @@ def load_prompts(restaurant_id: str, config_root: Path | None = None) -> Restaur
         restaurant_id=restaurant_id,
         restaurant_name=str(raw.get("restaurant_name", restaurant_id)),
         greeting=str(raw.get("greeting", "Welcome! What would you like to order today?")),
+        featured_items=[str(item) for item in (raw.get("featured_items") or [])],
         system=str(raw.get("system", "")),
         rules=[str(r) for r in raw.get("rules", [])],
         phase_hints={str(k): str(v) for k, v in (raw.get("phase_hints") or {}).items()},
